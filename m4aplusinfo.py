@@ -61,11 +61,11 @@ def main():
                 continue
             number = name.split('_')[0]         # file names like 00NN_artistname - songname.ext
             song_title = name.split('_')[1]
-            found = mp4tags.fill_mp4_tags(song_title, os.path.join(dirpath, fname),
+            found = mp4tags.fill_mp4_tags(number, song_title, os.path.join(dirpath, fname),
                                           cli_params, client)
             goods = goods + 1 if found else goods
             bads = bads + 1 if not found else bads
-            time.sleep(2)
+            time.sleep(10)
     print(f'Processed: {goods+bads}, Found: {goods}, Not found: {bads}')
 
 
