@@ -7,7 +7,6 @@ import oauth2 as oauth
 import unidecode as unidec
 import fuzzy_compare
 
-
 base_url = 'https://api.discogs.com/database/search?q='
 release_url = 'https://api.discogs.com/releases/'
 top_url = 'https://api.discogs.com/'
@@ -18,6 +17,7 @@ release_info = {'album_name': '', 'year': ''}
 proper_formats = ['lp', 'ep', 'cd', 'cdr', 'file', 'vinyl', 'compilation', 'sampler']
 allowed_delta = 6
 lower_limit = 52
+MaxRating = 150
 artist_found = False
 
 
@@ -31,7 +31,6 @@ def connect_oauth(oauth_info):
 
 
 def site_request(url, uagent, client):
-    global site_requests
     tries = 5
     while tries > 0:
         try:
@@ -82,7 +81,8 @@ def correct_name(str):
     # убирает все, что в скобках
     str = no_brackets(str, '[]')
     str = no_brackets(str, '()')
-    str = unidec.unidecode(str)
+#    str = unidec.unidecode(str)
+    str = str.lower()
     return str.strip()
 
 
@@ -134,8 +134,8 @@ def get_proper_release(artist, title, release, media_format, albums_only, client
             id = release['results'][i]['id']
 
         main_artist = main_artist.split(' - ')[0]
-        main_artist = correct_artist_name(main_artist).lower()
-        artist = correct_artist_name(artist).lower()
+        main_artist = correct_artist_name(main_artist)
+        artist = correct_artist_name(artist)
         for med in range(len(media_type)):
             media_type[med] = media_type[med].lower()
 
@@ -185,16 +185,12 @@ def check_title(title, id, master, client):
         return False
     release = json.loads(content.decode('utf-8'))
     for song in release['tracklist']:  # простое совпадение названий песен
-        cur_song = correct_name(song['title']).lower()
-        ntitle = title.lower()
-        if cur_song == ntitle:
+        cur_song = correct_name(song['title'])
+        if cur_song == title:
             return True
-    for song in release['tracklist']:  # совпадения части названия
-        cur_song = song['title'].lower()
-        if smart_compare(cur_song, title.lower()):
+        if smart_compare(cur_song, title):
             return True
-    for song in release['tracklist']:
-        if fuzzy_compare.fuzzy_compare(song['title'], title) > lower_limit:
+        if fuzzy_compare.fuzzy_compare(cur_song, title) > lower_limit:
             return True
     return False
 
@@ -217,6 +213,35 @@ def smart_compare(song, title):
             return True
     return False
 
+def find_true_artist(artist_web, client):
+    resp, content = search_artist(artist_web, client)
+    if content == None:
+        return False, artist_web
+    release = json.loads(content.decode('utf-8'))
+    if release['pagination']['items'] == 0:
+        return False, artist_web
+
+    rating = 1
+    champion = artist_web
+    mirror_artist = no_comma(artist_web)
+    for who_is_this in release['results']:
+        who_is_web = correct_artist_name(who_is_this['title'])
+        if artist_web == who_is_web:
+            rating = MaxRating
+            champion = who_is_web
+            continue
+        if mirror_artist == who_is_web:
+            champion = who_is_web
+            rating = MaxRating
+            continue
+        f_rating = fuzzy_compare.fuzzy_compare(who_is_web, artist_web)
+        if f_rating > lower_limit:
+            if f_rating > rating:
+                rating = f_rating
+                champion = who_is_web
+                continue
+    return True, correct_artist_name(champion)
+
 
 def get_album_cover(song_title, client):
     if '-' not in song_title:
@@ -233,33 +258,11 @@ def get_album_cover(song_title, client):
         return False
 
     # --------------- есть ли такой артист -----------------
-    resp, content = search_artist(artist_web, client)
-    if content == None:
+    found, artist_web = find_true_artist(artist_web, client)
+    if not found:
+        print(f'artist {artist} not found')
         return False
-    release = json.loads(content.decode('utf-8'))
-    if release['pagination']['items'] == 0:
-        return False
-    artist_found = False
-    for who_is_this in release['results']:
-        if artist_web.lower() == who_is_this['title'].lower():
-            artist = who_is_this['title'].lower()
-            artist_found = True
-            break
-    if artist_found == False:
-        mirror_artist = no_comma(artist_web)
-        for who_is_this in release['results']:
-            if mirror_artist.lower() == who_is_this['title'].lower():
-                artist = who_is_this['title'].lower()
-                artist_found = True
-                break
-    if artist_found == False:
-        for who_is_this in release['results']:
-            if fuzzy_compare.fuzzy_compare(who_is_this['title'], artist_web) > lower_limit:
-                artist = who_is_this['title'].lower()
-                artist_found = True
-                break
-    artist_web = correct_artist_name(artist)
-    # ---------------------------------------------------
+  # ---------------------------------------------------
 
     pointer = -1
     found = False

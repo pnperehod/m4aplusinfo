@@ -36,9 +36,10 @@ def config_read():
 def cli_args():
     parser = argparse.ArgumentParser(prog='arguments', description=description,
                                      epilog='(c) nnn 2024')
-    parser.add_argument('source_dir', type=str, help='directory with music files')
     parser.add_argument('-t', action='store_true', help='Test mode')
     parser.add_argument('-b', action='store_true', help='Show not found only')
+#    parser.add_argument('-n', nargs='+', type=int, help='process only this numbers')
+    parser.add_argument('source_dir', type=str, help='directory with music files')
 
     args = parser.parse_args()
     return args

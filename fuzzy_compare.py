@@ -2,11 +2,11 @@ fuzzy_log = False
 
 def logging(level):
     global fuzzy_log
-    fuzzy_log = True if level > 0 else False
+    fuzzy_log = True if level > 2 else False
 
 
 def fuzzy_compare(string1, string2):
-    treshold = 2
+    treshold = 3
 
     string_a = string1.lower() if len(string1) > len(string2) else string2.lower()  # static
     string_b = string2.lower() if len(string1) > len(string2) else string1.lower()  # slider
