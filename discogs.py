@@ -295,7 +295,9 @@ def select_album(artist, title, client):
 
 # ---------------------------------------------------
 def get_album_cover(song_title, client):
-    global site_requests, release_info
+    global requests_counter, release_info
+
+    requests_counter = 0
 
     if '-' not in song_title:
         print(f"No info for {song_title}")

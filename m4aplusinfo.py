@@ -1,8 +1,7 @@
 import os, sys
 import configparser
 import discogs
-import mp4tags
-import mp3tags
+import fill_tags
 from fuzzy_compare import logging, fuzzy_compare
 import time
 import argparse
@@ -12,7 +11,8 @@ oauth2_info = {'consumer_key': '',
                'oauth_token': '',
                'oauth_token_secret': ''}
 debug_level = 0
-TIMEOUT = 5         # seconds
+TIMEOUT = 60         # seconds
+timeouts = {20: 2, 40: 20, 50: 30, 60: 40, 80: 60, 1000: 60}
 description = """
 Utility to update downloaded music file with
 additional info and cover images
@@ -65,14 +65,21 @@ def main():
             song_title = name.split('_')[1]
             full_name = os.path.join(dirpath, fname)
             if extension == '.m4a':
-                found = mp4tags.fill_mp4_tags(number, song_title, full_name, cli_params, client)
+                found = fill_tags.fill_tags('m4a', number, song_title, full_name, cli_params, client)
             elif extension == '.mp3':
-                found = mp3tags.fill_mp3_tags(number, song_title, full_name, cli_params, client)
+                found = fill_tags.fill_tags('mp3', number, song_title, full_name, cli_params, client)
             else:
                 continue
             goods = goods + 1 if found else goods
             bads = bads + 1 if not found else bads
-            time.sleep(TIMEOUT)
+            print(f'requests = {discogs.requests_counter}')
+            timeout = TIMEOUT
+            for t in timeouts:
+                if discogs.requests_counter < t:
+                    timeout = timeouts[t]
+                    break
+                continue
+            time.sleep(timeout)
 
     print(f'Processed: {goods+bads}, Found: {goods}, Not found: {bads}')
 
