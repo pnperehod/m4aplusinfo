@@ -23,15 +23,15 @@ def fill_tags(type, number, song_title, fname, cli_params, client):
     if cli_params['test_mode']:
         if cli_params['show_bad_only']:
             if not found:
-                print(f'{number}: {tags_info['artist']} - {tags_info['title']}')
+                print(f"{number}: {tags_info['artist']} - {tags_info['title']}")
         else:
-            print(f'{number}: {tags_info['artist']} - {tags_info['title']}  [{tags_info['album_name']} (p){tags_info['year']}]')
+            print(f"{number}: {tags_info['artist']} - {tags_info['title']}  [{tags_info['album_name']} (p){tags_info['year']}]")
     else:
         if type == 'mp3':
             mp3_tags(tags_info, fname, found)
         if type == 'm4a':
             m4a_tags(tags_info, fname, found)
-        print(f'{number}: {tags_info['artist']} - {tags_info['title']}  [{tags_info['album_name']} (p){tags_info['year']}]')
+        print(f"{number}: {tags_info['artist']} - {tags_info['title']}  [{tags_info['album_name']} (p){tags_info['year']}]")
     return found
 
 def mp3_tags(tags_info, fname, found):
