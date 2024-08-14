@@ -12,7 +12,7 @@ oauth2_info = {'consumer_key': '',
                'oauth_token_secret': ''}
 debug_level = 0
 TIMEOUT = 60         # seconds
-timeouts = {20: 2, 40: 20, 50: 30, 60: 40, 80: 60, 1000: 60}
+timeouts = {20: 5, 40: 20, 50: 30, 60: 40, 80: 60, 1000: 60}
 description = """
 Utility to update downloaded music file with
 additional info and cover images
@@ -53,7 +53,7 @@ def main():
     cli_params['show_bad_only'] = True if args.b else False
     client = discogs.connect_oauth(oauth2_info)
 
-    logging(debug_level)
+    discogs.logging(debug_level)
     bads = goods = 0
 
     for dirpath, dirnames, fnames in os.walk(cli_params['source_dir'], True):
@@ -72,7 +72,8 @@ def main():
                 continue
             goods = goods + 1 if found else goods
             bads = bads + 1 if not found else bads
-            print(f'requests = {discogs.requests_counter}')
+            if debug_level >=1:
+                print(f'requests = {discogs.requests_counter}')
             timeout = TIMEOUT
             for t in timeouts:
                 if discogs.requests_counter < t:
