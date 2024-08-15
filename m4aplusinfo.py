@@ -54,6 +54,7 @@ def main():
     client = discogs.connect_oauth(oauth2_info)
 
     discogs.logging(debug_level)
+    logging(debug_level)
     bads = goods = 0
 
     for dirpath, dirnames, fnames in os.walk(cli_params['source_dir'], True):

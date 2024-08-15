@@ -2,6 +2,7 @@
 single_test = False
 test_number = 0
 treshold = 3
+fuzzy_log = False
 
 tests = [
     ['al di meola', 'al di meola'],                          # 0
