@@ -18,7 +18,8 @@ discogs_error = 'Error getting information from Discogs.com'
 proper_formats = ['lp', 'ep', 'cd', 'cdr', 'file', 'vinyl', 'blu-ray']
 unproper_formats = ['compilation', 'sampler', 'single', 'maxi-single', '7\"', '12\"', '45 rpm', 'vhs']
 release_info = {'album_name': '', 'year': ''}
-delimiters = [' and ', ',', ';', ' / ', ' f/']
+delimiters = [' and ', ' & ', ',', ';', ' / ', ' f/']
+cover_file = 'cover.jpg'
 user_agent = 'detektor_radio'
 requests_counter = 0
 allowed_delta = 6
@@ -74,8 +75,16 @@ def do_the_search(artist, title, master, client):
 def no_comma(str):
     is_comma = str.find(',')
     if is_comma != -1:
-        str = str[is_comma + 1:].strip() + ' ' + str[:is_comma].strip()
-    return str
+        for delim in delimiters:
+            pos = str[is_comma + 1:].find(delim)
+            if pos != -1:
+                break
+        if pos == -1:
+            str = str[is_comma + 1:].strip() + ' ' + str[:is_comma].strip()
+        else:
+            substr = str[is_comma + 1: is_comma + 1 + pos]
+            str = substr + ' ' + str[:is_comma] + str[is_comma + 1 + pos:]
+    return str.strip()
 
 
 def no_brackets(str, brackets):              # brackets is a string of 2 symbols, like '()'
@@ -365,15 +374,21 @@ def get_album_cover(song_title, client):
             print(f'Unable to download image {cover_image}, error {e}')
         return False
 
+    img = Image.open(io.BytesIO(content))
     if debug_img_show:
-        img = Image.open(io.BytesIO(content))
-        img.show()
+            img.show()
     if debug_img_save:
         try:
             img.save(artist + ' - ' + title + '.jpg')
-        except: # OSError:
+        except:     # OSError:
             if debug_error:
-                print(f"Can't write cover file")
+                print(f"Can't write {artist + ' - ' + title + '.jpg'} file")
+    try:
+        img.save(cover_file)
+    except: # OSError:
+        print(f"Can't write cover file")
+
+
     return True
 
 def get_release_info():
