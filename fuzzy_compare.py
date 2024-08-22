@@ -2,7 +2,6 @@
 single_test = False
 test_number = 0
 treshold = 3
-fuzzy_log = False
 
 tests = [
     ['al di meola', 'al di meola'],                          # 0
@@ -21,7 +20,7 @@ tests = [
 ]
 def logging(level):
     global fuzzy_log
-    fuzzy_log = True if level > 2 else False
+    fuzzy_log = True if level > 3 else False
 
 def only_alnum(string):
     str_out = ''.join([s for s in string if s.isalnum()])
@@ -49,7 +48,7 @@ def fuzzy_compare(string1, string2):
         sums.append(sum)
 
     total = 0
-    for i in range(length_b, length_b + length_a):
+    for i in range(1, length_b + length_a):
         total = total + sums[i] if sums[i] > treshold else total
     if fuzzy_log:
         print(sums)

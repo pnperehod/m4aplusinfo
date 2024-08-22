@@ -4,22 +4,27 @@
 #
 ##########################################################
 import json
-import io
 import time
 import fuzzy_compare
-
-from PIL import Image
 import oauth2 as oauth
 
 base_url = 'https://api.discogs.com/database/search?q='
 top_url = 'https://api.discogs.com/'
 release_url = 'https://api.discogs.com/releases/'
+default_url = 'https://discogs.com'
 discogs_error = 'Error getting information from Discogs.com'
 proper_formats = ['lp', 'ep', 'cd', 'cdr', 'file', 'vinyl', 'blu-ray']
 unproper_formats = ['compilation', 'sampler', 'single', 'maxi-single', '7\"', '12\"', '45 rpm', 'vhs']
-release_info = {'album_name': '', 'year': ''}
+release_info = {'artist': '',
+                'song': '',
+                'title': '',
+                'year': '',
+                'genre': '',
+                'label': '',
+                'uri': '',
+                'url': '',
+                'cover_image': ''}
 delimiters = [' and ', ' & ', ',', ';', ' / ', ' f/']
-cover_file = 'cover.jpg'
 user_agent = 'detektor_radio'
 requests_counter = 0
 allowed_delta = 6
@@ -30,10 +35,12 @@ MaxRating = 200
 def logging(level):
     global debug_warning, debug_error, debug_json, debug_img_show, debug_img_save
     debug_warning = True if level >= 1 else False
-    debug_error = True if level > 1 else False
-    debug_json = True if level >= 3 else False
-    debug_img_show = True if level >= 2 else False
-    debug_img_save = True if level >= 3 else False
+    debug_error = True if level >= 2 else False
+    debug_img_show = True if level >= 3 else False
+    debug_json = True if level >= 4 else False
+    debug_img_save = True if level >= 5 else False
+
+    fuzzy_compare.logging(level)
 
 def connect_oauth(oauth_info):
     # create oauth Consumer and Client objects using
@@ -65,9 +72,9 @@ def site_request(url, uagent, client):
 
 def do_the_search(artist, title, master, client):
     if master:
-        search_url = base_url + '+'.join(artist.split()) + '+' + '+'.join(title.split()) + '&type=master' + '&page=1&per_page=100'
+        search_url = base_url + '+'.join(artist.split()) + '+-+' + '+'.join(title.split()) + '&type=master' + '&page=1&per_page=100'
     else:
-        search_url = base_url + '+'.join(artist.split()) + '+' + '+'.join(title.split()) + '&type=release' + '&page=1&per_page=100'
+        search_url = base_url + '+'.join(artist.split()) + '+-+' + '+'.join(title.split()) + '&type=release' + '&page=1&per_page=100'
     resp, content = site_request(search_url, user_agent, client)
     return resp, content
 
@@ -319,9 +326,22 @@ def select_album(artist, title, client):
                 break
     return found, pointer, release
 
+def fill_release_info(release, pointer):
+    global release_info
+    fields = ['title', 'year', 'genre', 'label', 'uri', 'cover_image']
+    for field in fields:
+        try:
+            tag = release['results'][pointer][field]
+        except:
+            tag = ''
+        release_info[field] = tag[0] if type(tag) is list else tag
+    release_info['url'] = default_url + release_info['uri']
+    release_info['title'] = ' - '.join(release_info['title'].split(' - ')[1:])
+
+
 # ---------------------------------------------------
 def get_album_cover(song_title, client):
-    global requests_counter
+    global requests_counter, release_info
 
     if '-' not in song_title:
         if debug_warning:
@@ -332,6 +352,10 @@ def get_album_cover(song_title, client):
     artist = song_title.split(' - ')[0]
     title_list = song_title.split(' - ')
     title = ' - '.join(title_list[1:])
+
+    release_info = release_info.fromkeys(release_info, '')
+    release_info['artist'] = artist
+    release_info['song'] = title
     artist_web = correct_artist_name(artist)
     title_web = correct_name(title)
     if artist_web == '' or title_web == '':
@@ -343,7 +367,7 @@ def get_album_cover(song_title, client):
     found, artist_web = find_true_artist(artist_web, client)
     if not found:
         if debug_warning:
-            print(f'artist {artist} not found')
+            print(f'Info about artist {artist} not found')
         return False
 #--------------------------------------------------------
 
@@ -351,45 +375,13 @@ def get_album_cover(song_title, client):
     found, pointer, release = select_album(artist_web, title_web, client)
     if (not found) or (pointer == -1):
         if debug_warning:
-            print(f"No info for {song_title}")
+            print(f"No release found for {song_title}")
         return False
 
-    cover_image = release['results'][pointer]['cover_image']
-    try:
-        release_info['album_name'] = release['results'][pointer]['title']
-    except:
-        release_info['album_name'] = ''
-    try:
-        release_info['year'] = release['results'][pointer]['year']
-    except:
-        release_info['year'] = ''
-
+    fill_release_info(release, pointer)
     #    with open(artist_web + ' - ' + title_web + '_a' + '.json', 'w') as js:
 #        json.dump(release, js)
-
-    try:
-        resp, content = client.request(cover_image, headers={'User-Agent': user_agent})
-    except Exception as e:
-        if debug_error:
-            print(f'Unable to download image {cover_image}, error {e}')
-        return False
-
-    img = Image.open(io.BytesIO(content))
-    if debug_img_show:
-            img.show()
-    if debug_img_save:
-        try:
-            img.save(artist + ' - ' + title + '.jpg')
-        except:     # OSError:
-            if debug_error:
-                print(f"Can't write {artist + ' - ' + title + '.jpg'} file")
-    try:
-        img.save(cover_file)
-    except: # OSError:
-        print(f"Can't write cover file")
-
-
     return True
 
 def get_release_info():
-    return release_info['album_name'], release_info['year']
+    return release_info
