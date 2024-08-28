@@ -31,6 +31,7 @@ def fill_tags(type, number, song_title, fname, cli_params, client):
 
 def mp3_tags(number, release_info, fname, found, client):
     audio = ID3(fname)
+    audio.delall('APIC')
     audio['TPE1'] = TPE1(text=release_info['artist'])
     audio['TIT2'] = TIT2(text=release_info['song'])
     audio['TALB'] = TALB(text=release_info['title'])
@@ -43,10 +44,11 @@ def mp3_tags(number, release_info, fname, found, client):
     with open(picture, 'rb') as pic:
         audio['APIC'] = APIC(encoding=3, mime='image/jpeg', type=PictureType.COVER_FRONT, desc=u'Cover',
                              data=pic.read())
-    audio.save()
+    audio.save(fname)
 
 def m4a_tags(number, release_info, fname, found, client):
     audio = MP4(fname)
+    audio.delete()
     audio["\xa9nam"] = release_info['song']
     audio["\xa9ART"] = release_info['artist']
     audio["\xa9alb"] = release_info['title']
@@ -58,7 +60,7 @@ def m4a_tags(number, release_info, fname, found, client):
     picture = get_picture(release_info, client) if found else default_picture
     with open(picture, 'rb') as pic:
         audio["covr"] = [MP4Cover(pic.read(), imageformat=MP4Cover.FORMAT_JPEG)]
-    audio.save()
+    audio.save(fname)
 
 def get_picture(release_info, client):
     cover_image = release_info['cover_image']

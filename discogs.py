@@ -117,7 +117,7 @@ def correct_name(str):
 def correct_artist_name(str):
     str = correct_name(str)
     if str.lower().find('the ') == 0:                # если The в начале имени
-        str = str[3:]     # убирает начальное The в имени
+        str = str[3:]                                # убирает начальное The в имени
 #    str = no_comma(str)
     str = str[:-1] if (len(str) > 0) and ('*' == str[-1]) else str
     return str.strip()
@@ -154,6 +154,14 @@ def proper_media_format(media_type):
     for format in media_type:
         format = format.lower()
         if format in proper_formats:
+            return True
+    return False
+
+def compilation_media_format(media_type):
+    comp_media = ['compilation', 'sampler']
+    for frmt in media_type:
+        frmt = frmt.lower()
+        if frmt in comp_media:
             return True
     return False
 
@@ -204,6 +212,46 @@ def get_proper_release(artist, title, release, client):
                 year_min = year
                 pointer = i
     return pointer
+
+def get_compilation_release(artist, title, release, client):
+    items = int(release['pagination']['items'])
+    per_page = int(release['pagination']['per_page'])
+    variants = items if items < per_page else per_page
+    year_min = 9999
+    max_rating = 0
+    champion = ''
+    pointer = -1
+    for i in range(variants):
+        try:
+            year = int(release['results'][i]['year'])
+            media_type = release['results'][i]['format']
+            release_artist = release['results'][i]['title']
+        except:
+            continue
+
+        if not compilation_media_format(media_type):
+            continue
+
+        try:
+            master = True
+            id = release['results'][i]['master_id']
+        except:
+            master = False
+            id = release['results'][i]['release_id']
+        if id == 0:
+            master = False
+            id = release['results'][i]['id']
+
+        if year < year_min:
+            checked, rating = check_title(title, id, master, client)
+            if (not checked) or (rating < max_rating):
+                continue
+            max_rating = rating
+            year_min = year
+            pointer = i
+    return pointer
+
+
 
 def search_artist(artist, client):
     artist = correct_name(artist)
@@ -324,6 +372,9 @@ def select_album(artist, title, client):
             else:
                 found = True
                 break
+    if (not found) or (pointer == -1):
+        pointer = get_compilation_release(artist, title, release, client)       # try to find in compilations
+        found = True if pointer != -1 else False
     return found, pointer, release
 
 def fill_release_info(release, pointer):
@@ -369,9 +420,7 @@ def get_album_cover(song_title, client):
         if debug_warning:
             print(f'Info about artist {artist} not found')
         return False
-#--------------------------------------------------------
 
-# -------------------  release check ---------------------
     found, pointer, release = select_album(artist_web, title_web, client)
     if (not found) or (pointer == -1):
         if debug_warning:
@@ -379,8 +428,6 @@ def get_album_cover(song_title, client):
         return False
 
     fill_release_info(release, pointer)
-    #    with open(artist_web + ' - ' + title_web + '_a' + '.json', 'w') as js:
-#        json.dump(release, js)
     return True
 
 def get_release_info():
